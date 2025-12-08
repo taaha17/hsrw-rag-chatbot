@@ -4,6 +4,8 @@ This project is a Retrieval-Augmented Generation (RAG) chatbot that uses documen
 
 ## Setup
 
+**Prerequisite:** Ensure you have Python 3.11.9 installed and available.
+
 1.  **Create a virtual environment:**
     ```bash
     python -m venv venv
