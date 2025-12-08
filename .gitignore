@@ -1,0 +1,16 @@
+# Virtual Environment
+venv/
+/venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database
+chroma_db/
+/chroma_db/
+*.sqlite3
+
+# IDE / Editor specific
+.vscode/
+.idea/
