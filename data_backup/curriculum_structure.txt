@@ -1,0 +1,47 @@
+DOCUMENT: ISE_Curriculum_Overview
+DEGREE: Infotronic Systems Engineering (B.Sc.)
+
+--- 1st Semester Modules ---
+- Fundamentals of Computer Science and Networks (CI_1.02)
+- Analysis and Discrete Mathematics (CI_1.05)
+- Physics: Mechanics, Electricity and Magnetism (CI_1.07)
+- Laboratory: Analog and Digital Engineering (CI_1.08)
+- Scientific Programming (CI_1.09)
+
+--- 2nd Semester Modules ---
+- Object Oriented Programming (CI_2.03)
+- Computer Networks (CI_2.04)
+- Linear Algebra and Graph Theory (CI_2.05)
+- Fundamentals of Electrical Engineering (CI_2.07)
+- Computer Architecture (CI_2.08)
+
+--- 3rd Semester Modules ---
+- Signals and Systems (CI_3.02)
+- Data Management (CI_3.03)
+- Higher Mathematics (CI_3.06)
+- Software Engineering (CI_3.07)
+- Laboratory: Microprocessor Laboratory (CI_3.08)
+- Data Science (CI_3.09)
+
+--- 4th Semester Modules ---
+- Analog and Digital Signal Processing (CI_4.01)
+- Programming: Distributed Systems (CI_4.03)
+- Elective Key Competences (CI_K.01/02)
+- Elective Option 1
+- Elective Option 2
+
+--- 5th Semester Modules ---
+- Embedded Systems (CI_5.01)
+- Communication Systems (CI_5.02)
+- Interdisciplinary Project (CI_5.03)
+- Elective Option 3
+- Elective Option 4
+
+--- 6th Semester ---
+- Internship or Semester Abroad (CI_6.01)
+
+--- 7th Semester ---
+- Bachelor Workshop I: Research Methods (CI_7.01)
+- Bachelor Workshop II: Scientific Writing (CI_7.02)
+- Bachelor Workshop III: Colloquium (CI_7.03)
+- Bachelor Thesis and Colloquium (CI_7.04)
