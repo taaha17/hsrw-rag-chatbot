@@ -131,17 +131,24 @@ def find_code_by_name(query, module_map):
         name_lower = name.lower()
         score = 0
         
-        # Check for exact substring match (e.g., "signals and systems" in full name)
         query_phrase = " ".join(query_words)
-        if query_phrase in name_lower:
+
+        # CRITICAL CHANGE: Prioritize exact or near-exact matches much more heavily.
+        # This prevents "Data Science" from incorrectly matching "Software Engineering".
+        
+        # 1. Exact match (highest score)
+        if query_phrase == name_lower:
+            score = 200
+        # 2. Query is a perfect substring of the name
+        elif query_phrase in name_lower:
             score = 100
-        # Check if ALL meaningful words in query exist in the module name
+        # 3. All query words are in the name (less reliable)
         elif all(word in name_lower for word in query_words):
-            score = 50 + len(query_words) * 10  # Bonus for more words matching
-        # Check for partial matches (at least half the words match)
+            score = 50 + len(query_words) * 10  # Bonus for more words
+        # 4. Partial match (lowest score)
         else:
             matching_words = sum(1 for word in query_words if word in name_lower)
-            if matching_words >= len(query_words) / 2:
+            if matching_words >= len(query_words) / 2 and len(query_words) > 1:
                 score = matching_words * 10
         
         if score > best_score:
@@ -162,10 +169,13 @@ def detect_query_intent(query):
     query_lower = query.lower()
     
     # Schedule-related keywords
+    # Note: we explicitly include "block" so questions like
+    # "Are there any block dates?" are routed to schedule logic
     schedule_indicators = [
         'schedule', 'class', 'classes', 'when', 'time', 'timing', 'today', 
         'tomorrow', 'day', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday',
-        'what day', 'which day', 'room', 'where', 'professor', 'instructor', 'teacher'
+        'what day', 'which day', 'room', 'where', 'professor', 'instructor', 'teacher',
+        'block', 'block dates'
     ]
     
     # Module list keywords

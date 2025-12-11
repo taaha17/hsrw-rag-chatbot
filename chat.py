@@ -119,6 +119,7 @@ Present the information in this structure:
 
 9. **Professor in Charge**
    [Extract from "Person in charge of module"]
+   ⚠️ If the Context contains "PROFESSOR INFORMATION (FROM SCHEDULE)", use THAT name as the primary teacher.
 
 10. **Additional Information**
     [Extract from "Additional Information" - recommended books, papers, etc.]
@@ -129,6 +130,7 @@ Present the information in this structure:
 - Type of assessment must match EXACTLY what's in the handbook
 - Entry requirements: Only list if explicitly stated, otherwise say "None" or "Not specified"
 - Workload includes BOTH teaching time AND self-study hours
+- If the user asks "Who teaches X?", prioritize the professor from the schedule if available.
 """
     
     return module_template
@@ -207,6 +209,11 @@ SEMESTER SEASONS:
 - Summer Semesters: 2, 4, 6 (start in March/April)
 - Students can take modules from earlier semesters if the season matches
 
+IMPORTANT LOGIC ABOUT CURRENT SEMESTER:
+- When a student asks about a SPECIFIC MODULE (e.g. "When is Machine Learning?", "Tell me about Data Science"), ALWAYS give the official facts about that module (code, schedule, room, season) EVEN IF it is not in their current semester.
+- AFTER you give the factual information, you MAY briefly explain how this relates to their current semester (e.g. "this module appears in later semesters"), but NEVER hide or omit correct schedule information because of the student's semester.
+- Only use the student's semester to filter results when they explicitly ask about "my modules this semester" or "my classes today".
+
 CLASS TYPES:
 - L = Lecture (Vorlesung)
 - E = Exercise/Tutorial (Übung) 
@@ -256,6 +263,7 @@ student question: {question}
 --- CORE RULES ---
 1. BE CONCISE: answer directly, no fluff
 2. BE FACTUAL: only use provided data, never speculate or add general knowledge
+3. MODULE QUESTIONS: for questions about a specific module, ALWAYS answer with full, official information (schedule, professor, credits, semester, season) first, then optionally relate it to the student's current semester. Do NOT say information is "not scheduled in your current semester" if the schedule data is present.
 3. if asking about a specific module, use rhine-waal's data only, not general definitions
 4. if data missing, say "i don't have that in the university documents"
 5. when listing modules, present complete list without commentary
@@ -458,7 +466,9 @@ explain this clearly and wish them a good break. be friendly but concise."""
 semester {semester_filters["semester_num"]} schedule:
 {json.dumps(schedule_info, indent=2)}
 
-present this clearly with emojis (📅 day, 🕐 time, 📚 module, 👨‍🏫 professor, 📍 room). include class type."""
+present this clearly with emojis (📅 day, 🕐 time, 📚 module, 👨‍🏫 professor, 📍 room). 
+IMPORTANT: Include the FULL room information (Building, Floor, Room Number) if available (e.g. "01 01 110").
+"""
                         else:
                             # semester is active but no classes on this day
                             context = f"""[SCHEDULE_INFO]
@@ -466,7 +476,10 @@ semester {semester_filters['semester_num']} has no classes on {query_day}.
 tell the student they're free today. be friendly."""
                     else:
                         # No semester specified - ask the user
-                        context = "[SYSTEM]: ask which semester they're in to provide the correct schedule."
+                        context = """[SYSTEM]: The user asked for a schedule but did not specify a semester.
+STOP. Do not guess.
+Ask the user: "Which semester are you in?"
+"""
             
             elif intent == 'modules_list':
                 # USER WANTS A LIST OF MODULES FOR THEIR SEMESTER
@@ -482,12 +495,19 @@ here are all modules for semester {filters.get('semester_num', 'requested')}:
 
 {chr(10).join(hardcoded_list)}
 
-present this as a clean numbered list. no additional commentary unless asked."""
+MANDATORY:
+1. Present this as a clean numbered list.
+2. List ALL modules provided above. Do NOT summarize or truncate.
+3. Do not add extra commentary.
+"""
                     else:
                         context = "[SYSTEM]: no modules found for specified criteria."
                 else:
                     # User didn't specify semester
-                    context = "[SYSTEM]: ask which semester they're in."
+                    context = """[SYSTEM]: The user asked for a module list but did not specify a semester.
+STOP. Do not guess.
+Ask the user: "Which semester are you in?"
+"""
             
             elif intent == 'module_info':
                 # USER WANTS DETAILED INFO ABOUT A SPECIFIC MODULE
@@ -497,16 +517,37 @@ present this as a clean numbered list. no additional commentary unless asked."""
                 if module_code:
                     module_name = module_map.get(module_code, "")
                     
-                    # Retrieve detailed module info from RAG
-                    retrieved_docs = ensemble_retriever.invoke(query)
+                    # Retrieve detailed module info from RAG using the MODULE NAME, not the user query
+                    # This ensures we get the module's content, not random matches for "who teaches"
+                    retrieved_docs = ensemble_retriever.invoke(f"{module_code} {module_name}")
                     
                     # Use structured formatter for module details
                     context = format_module_details_from_rag(module_code, module_name, retrieved_docs)
                     
-                    # Also check if they want schedule info for this module
+                    # Check for schedule/professor info
+                    schedule_info = get_schedule_for_module(module_name, schedule_data, module_code)
+                    
+                    # If user asks "who teaches", prioritize the professor from schedule
+                    if any(word in query.lower() for word in ['who', 'professor', 'teacher', 'instructor']):
+                        if schedule_info:
+                            professors = set()
+                            for session in schedule_info:
+                                if session.get('professor'):
+                                    professors.add(session['professor'])
+                            
+                            if professors:
+                                context += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROFESSOR INFORMATION (FROM SCHEDULE):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The following professors are listed in the schedule for this module:
+{', '.join(professors)}
+
+IMPORTANT: This is the most accurate information about who teaches the course.
+"""
+                    
+                    # Also check if they want schedule info
                     if any(word in query.lower() for word in ['when', 'schedule', 'time', 'day']):
-                        schedule_info = get_schedule_for_module(module_name, schedule_data, module_code)
-                        
                         if schedule_info:
                             context += f"""
 

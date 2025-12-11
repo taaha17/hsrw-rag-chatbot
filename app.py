@@ -264,11 +264,19 @@ IMPORTANT: Present this information clearly to the student."""
                 filters = extract_semester_criteria(message)
                 query_semester = filters["semester_num"] if filters["semester_num"] else semester
                 
-                schedule_info = get_schedule_for_day(query_semester, query_day, schedule_data)
+                # get_schedule_for_day returns (schedule_list, is_active, current_season)
+                schedule_list, is_active, current_season = get_schedule_for_day(query_semester, query_day, schedule_data)
                 
-                if schedule_info:
-                    # schedule_info is a tuple (list, bool, str), extract the list
-                    schedule_list = schedule_info[0] if isinstance(schedule_info, tuple) else schedule_info
+                if not is_active:
+                    # Semester doesn't have classes in current season
+                    other_season = "Summer" if current_season == "Winter" else "Winter"
+                    context = f"""[SEMESTER_MISMATCH]
+Semester {query_semester} runs in the {other_season} semester.
+Current season: {current_season}
+
+Explain this clearly to the student."""
+                elif schedule_list and len(schedule_list) > 0:
+                    # Has classes on this day
                     formatted_schedule = format_schedule_list(schedule_list)
                     context = f"""[OFFICIAL CLASS SCHEDULE FOR {query_day.upper()}]
 Semester {query_semester}
@@ -277,6 +285,7 @@ Semester {query_semester}
 
 IMPORTANT: Present this schedule clearly to the student."""
                 else:
+                    # Semester is active but no classes on this day
                     context = f"[SYSTEM]: No classes scheduled for semester {query_semester} on {query_day}."
         
         # === MODULE LIST QUERIES ===
@@ -296,26 +305,36 @@ IMPORTANT: Present this schedule clearly to the student."""
             if module_code:
                 module_name = module_map.get(module_code, "")
                 
-                # Retrieve detailed module info from RAG
-                retrieved_docs = ensemble_retriever.invoke(message)
+                # ALWAYS retrieve schedule for module info queries
+                # (user might ask "who teaches", "when is", "tell me about", etc.)
+                schedule_info = get_schedule_for_module(module_name, schedule_data, module_code)
                 
-                # Use structured formatter for module details
-                context = format_module_details_from_rag(module_code, module_name, retrieved_docs)
-                
-                # Also check if they want schedule info for this module
-                if any(word in message.lower() for word in ['when', 'schedule', 'time', 'day']):
-                    schedule_info = get_schedule_for_module(module_name, schedule_data, module_code)
-                    
-                    if schedule_info:
-                        formatted_schedule = format_schedule_list(schedule_info)
-                        context += f"""
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLASS SCHEDULE FOR THIS MODULE:
+                # If schedule exists, prioritize it at the top of context
+                if schedule_info:
+                    formatted_schedule = format_schedule_list(schedule_info)
+                    context = f"""[OFFICIAL CLASS SCHEDULE FOR {module_name.upper()} ({module_code})]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {formatted_schedule}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-IMPORTANT: Include this schedule information in your response."""
+IMPORTANT:
+- If asked "who teaches", use the professor name from the schedule above.
+- If asked "when", use the day/time from the schedule above.
+- This module is offered in semester {schedule_info[0].get('semester', 'N/A')}.
+
+"""
+                else:
+                    # No schedule found
+                    context = f"""[MODULE INFO FOR {module_name.upper()} ({module_code})]
+No schedule information available for this module in the current academic year.
+
+"""
+                
+                # Retrieve detailed module info from RAG (handbook content)
+                retrieved_docs = ensemble_retriever.invoke(f"{module_code} {module_name}")
+                
+                # Append handbook details after schedule
+                context += format_module_details_from_rag(module_code, module_name, retrieved_docs)
             else:
                 # Module not found, use general RAG
                 retrieved_docs = ensemble_retriever.invoke(message)

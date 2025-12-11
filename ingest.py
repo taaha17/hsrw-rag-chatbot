@@ -76,6 +76,14 @@ def is_valid_header(line, name):
     # 5. Reject too short names
     if len(name) < 5:
         return False
+
+    # 6. Reject names ending with digits (common in tables, e.g. "Data Science 5")
+    if re.search(r'\d+$', name):
+        return False
+
+    # 7. Reject names with table-like keywords
+    if any(x in name for x in ["ECTS", "SWS", "Exam", "graded", "written"]):
+        return False
         
     return True
 
@@ -207,6 +215,12 @@ def parse_class_schedule(file_path, filename):
         # Check for semester marker
         semester_match = semester_pattern.search(line)
         if semester_match:
+            # Save any pending entry before switching semester
+            if pending_entry:
+                if pending_block_dates:
+                    pending_entry["block_dates"] = ", ".join(pending_block_dates)
+                schedule.append(pending_entry)
+            
             current_semester = int(semester_match.group(1))
             pending_entry = None  # Reset any pending entry
             pending_block_dates = []  # Reset block dates
@@ -215,6 +229,12 @@ def parse_class_schedule(file_path, filename):
         # Check for day marker
         day_match = day_pattern.match(line)
         if day_match:
+            # Save any pending entry before switching day
+            if pending_entry:
+                if pending_block_dates:
+                    pending_entry["block_dates"] = ", ".join(pending_block_dates)
+                schedule.append(pending_entry)
+
             current_day = day_match.group(1)
             # Normalize German day names to English
             day_mapping = {
@@ -278,9 +298,14 @@ def parse_class_schedule(file_path, filename):
                     room_found = False
                     for room_kw in room_keywords:
                         if room_kw in after_type:
-                            before_room = after_type.split(room_kw)[0].strip()
-                            professor = before_room
-                            room = room_kw
+                            # Split by the keyword
+                            split_parts = after_type.split(room_kw, 1)
+                            professor = split_parts[0].strip()
+                            
+                            # Capture the room name including any number after it (e.g. "Hörsaal 3")
+                            room_suffix = split_parts[1].strip()
+                            room = f"{room_kw} {room_suffix}".strip()
+                            
                             room_found = True
                             break
                     
@@ -309,6 +334,7 @@ def parse_class_schedule(file_path, filename):
                 }
             else:
                 # Type code not found on this line - skip
+                print(f"⚠️ WARNING: Matched entry pattern but no type found: {line}")
                 pass
         
         elif pending_entry:

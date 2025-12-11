@@ -35,8 +35,10 @@ MODULE_PATTERN = r"^(CI_[W|K|\d]\.\d{2})\s+(.+)$"
 
 # semester organization
 # winter semesters start in october, summer semesters in march
-WINTER_SEMS = [1, 3, 5, 7]
-SUMMER_SEMS = [2, 4, 6]
+WINTER_SEMESTERS = [1, 3, 5, 7]
+SUMMER_SEMESTERS = [2, 4, 6]
+WINTER_SEMS = WINTER_SEMESTERS # Alias for backward compatibility
+SUMMER_SEMS = SUMMER_SEMESTERS # Alias for backward compatibility
 ELECTIVE_SEMS = [4, 5]  # students choose electives in these semesters
 
 # Day name mappings (for normalization)
@@ -225,6 +227,33 @@ def setup_logging():
     
     return chat_logger, debug_logger, prompt_logger
 
+
+# Helper function to determine current season
+def get_current_season():
+    import datetime
+    month = datetime.datetime.now().month
+    # Winter: Oct (10) to Feb (2)
+    # Summer: Mar (3) to Sep (9)
+    if 3 <= month <= 9:
+        return "Summer"
+    else:
+        return "Winter"
+
+def is_semester_active(semester_num):
+    """
+    Checks if a semester is active in the current season and returns status and season.
+    e.g. Semester 1 is active in Winter, but not Summer.
+    
+    Returns:
+        tuple: (bool, str) -> (is_active, current_season)
+    """
+    season = get_current_season()
+    active = False
+    if season == "Winter":
+        active = semester_num in WINTER_SEMESTERS
+    else:
+        active = semester_num in SUMMER_SEMESTERS
+    return active, season
 
 # Initialize loggers (called once at import)
 chat_log, debug_log, prompt_log = setup_logging()
