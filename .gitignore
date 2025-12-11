@@ -11,6 +11,10 @@ chroma_db/
 /chroma_db/
 *.sqlite3
 
+# Logs (keep folder structure, ignore content)
+logs/*.log
+logs/*.log.*
+
 # IDE / Editor specific
 .vscode/
 .idea/

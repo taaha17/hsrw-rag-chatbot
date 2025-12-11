@@ -1,48 +1,106 @@
-# HSRW RAG Chatbot
+# zero - ai academic advisor
 
-An intelligent academic advisor chatbot for Infotronic Systems Engineering (ISE) students at Rhine-Waal University of Applied Sciences. The chatbot combines structured data (class schedules, module catalogs) with RAG (Retrieval-Augmented Generation) to provide accurate, contextual answers to student queries.
+ai-powered chatbot for rhine-waal university students to get instant answers about courses, schedules, and academic requirements.
 
-## Features
+![Version](https://img.shields.io/badge/version-2.0-blue)
+![Python](https://img.shields.io/badge/python-3.11+-green)
+![License](https://img.shields.io/badge/license-MIT-yellow)
 
-### 🎯 Smart Query Understanding
-- **Intent Detection**: Automatically classifies queries into schedule, module list, module info, or general categories
-- **Natural Language Processing**: Understands variations like "when is my physics class?", "what classes do I have today?", "which semester is signals and systems offered?"
-- **Fuzzy Module Matching**: Finds modules even with partial names or common variations
+---
 
-### 📅 Class Schedule Queries
-- Get schedule for specific modules (day, time, professor, room)
-- View all classes for a specific day and semester
-- Supports multiple class types: Lectures (L), Exercises (E), Labs (P), Combined (L&E)
-- Accurate professor names and room locations
+## features
 
-### 📚 Module Information
-- List modules by semester (1-7) or season (winter/summer)
-- Detailed module information: credits, prerequisites, content, learning objectives
-- Elective and key competence module recommendations
+- **smart query understanding** - detects what you're asking (schedule, modules, general info)
+- **natural language** - ask in your own words, no special syntax needed
+- **schedule information** - class times, rooms, professors, building locations
+- **academic guidance** - module listings, prerequisites, credits, course descriptions
+- **modern chat interface** - web-based, dark theme, conversation history
+- **context-aware** - remembers your semester and degree program
+- **local & private** - runs on your machine, no data sent externally
 
-### 🔍 Intelligent Data Routing
-- Prioritizes structured schedule data over RAG retrieval for schedule queries
-- Uses RAG for detailed module descriptions and general questions
-- Hybrid search combining BM25 and vector similarity
+---
 
-## Architecture
+## quick start
+
+### 1. prerequisites
+
+- python 3.11 or higher
+- ollama installed ([download](https://ollama.ai/))
+
+### 2. installation
+
+```bash
+# clone repository
+git clone https://github.com/taaha17/hsrw-rag-chatbot.git
+cd hsrw-rag-chatbot
+
+# create virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1  # windows powershell
+# source venv/bin/activate    # linux/mac
+
+# install dependencies
+pip install -r requirements.txt
+
+# pull ollama models
+ollama pull all-minilm
+ollama pull llama3.2
+```
+
+### 3. run
+
+```bash
+python run.py
+```
+
+this will:
+- check if data exists
+- run ingestion if needed (processes pdfs, creates vector database)
+- launch web interface at http://localhost:7860
+
+**options:**
+- `python run.py --force` - force re-ingest data
+- `python run.py --ingest` - only ingest, don't start app
+
+---
+
+## usage
+
+### example questions
+
+**schedule queries:**
+- "what classes do i have today?"
+- "when is my signals and systems lecture?"
+- "show me my tuesday schedule"
+
+**module information:**
+- "what modules are in semester 3?"
+- "tell me about machine learning"
+- "what are the prerequisites for embedded systems?"
+
+**general questions:**
+- "which semester is the internship?"
+- "how many ects is physics?"
+
+---
+
+## project structure
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          User Query                              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-                    ┌────────────────┐
-                    │ detect_query_  │
-                    │    intent()    │  ◄── Logic Engine
-                    └────────┬───────┘
-                             │
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-      ┌──────────┐  ┌──────────────┐  ┌──────────┐
-      │ Schedule │  │ Module List  │  │   RAG    │
-      │  Data    │  │ (JSON)       │  │ Retrieval│
+hsrw-rag-chatbot/
+├── app.py              # gradio web interface
+├── chat.py             # llm interaction & response generation
+├── logic_engine.py     # query intent detection & data filtering
+├── ingest.py           # pdf processing & vector db creation
+├── config.py           # centralized configuration
+├── utils.py            # custom ollama embeddings
+├── run.py              # master startup script
+├── data/               # parsed json data (module map, schedules)
+├── chroma_db/          # vector database
+└── logs/               # application logs
+```
+
+---
       └────┬─────┘  └──────┬───────┘  └─────┬────┘
            │               │                 │
            └───────────────┼─────────────────┘
@@ -58,120 +116,134 @@ An intelligent academic advisor chatbot for Infotronic Systems Engineering (ISE)
                    └──────────────┘
 ```
 
-## Setup
+### Components
 
-**Prerequisite:** Python 3.11.9+ and Ollama installed
+#### 🖥️ **Frontend** (`app.py`)
+- **Gradio interface**: Modern, responsive web UI
+- **User context management**: Degree program and semester tracking
+- **Rich formatting**: Emoji, tables, markdown
+- **Example queries**: Guided user experience
 
-1.  **Create a virtual environment:**
-    ```bash
-    python -m venv venv
-    ```
-    
-2.  **Activate the virtual environment:**
-    -   **Windows (PowerShell):**
-        ```powershell
-        .\venv\Scripts\Activate.ps1
-        ```
-    -   **macOS/Linux:**
-        ```bash
-        source venv/bin/activate
-        ```
-        
-3.  **Install the required packages:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-    
-4.  **Setup Ollama:**
-    -   Download from [ollama.ai](https://ollama.ai/)
-    -   Pull the required models:
-        ```bash
-        ollama pull all-minilm
-        ollama pull llama3.2
-        ```
-        
-5.  **Add PDF documents:**
-    -   Place your PDF files into the `data/` directory:
-      - `ISE_CS.pdf` - Class Schedule
-      - `ISE_MH.pdf` - Module Handbook
-      - `ISE_ER_*.pdf` - Examination Regulations
+#### 🧠 **Logic Engine** (`logic_engine.py`)
+- **Intent detection**: Classifies query type (schedule, module_list, module_info, general)
+- **Fuzzy matching**: Finds modules even with partial names
+- **Schedule retrieval**: By module, day, or semester
+- **Hybrid routing**: Structured data + RAG
 
-## Usage
+#### 💬 **Chat System** (`chat.py`)
+- **Conversation memory**: Maintains chat history
+- **LLM integration**: Ollama llama3.2
+- **System prompts**: Context-aware instructions
+- **Response generation**: Natural, helpful answers
 
-1.  **Ingest the documents:**
-    ```bash
-    python ingest.py
-    ```
-    This will:
-    - Parse class schedules and extract structured data
-    - Extract module information from the handbook
-    - Create embeddings and populate the vector database
-    - Generate `class_schedule.json` and `module_map.json`
+#### 🔍 **RAG Pipeline** (`ingest.py`)
+- **PDF parsing**: pdfplumber for text extraction
+- **Schedule parser**: Regex-based structured extraction
+- **Module mapping**: JSON storage for fast lookups
+- **Vector embeddings**: ChromaDB + all-minilm
+- **Hybrid retrieval**: BM25 + semantic search
 
-2.  **Run the chatbot:**
-    ```bash
-    python chat.py
-    ```
+#### ⚙️ **Configuration** (`config.py`)
+- **Degree programs**: Extensible structure
+- **Class type decoder**: L→Lecture, E→Exercise, P→Practical
+- **Room formatter**: "Building 1, Ground Floor, Room 215"
+## how it works
 
-3.  **Example Queries:**
-    - "When is my Signals and Systems class?"
-    - "What classes do I have today? I'm in 3rd semester."
-    - "Which modules do I have in 2nd semester?"
-    - "Tell me about the Data Science module"
-    - "Who teaches Machine Learning?"
-    - "What are the prerequisites for Embedded Systems?"
-
-## Project Structure
+### architecture
 
 ```
-hsrw-rag-chatbot/
-├── chat.py              # Main chatbot interface with smart query routing
-├── ingest.py            # Document parsing and vector DB creation
-├── logic_engine.py      # Query understanding and data filtering
-├── config.py            # Configuration and constants
-├── utils.py             # Helper utilities (Ollama embeddings)
-├── test_queries.py      # Test script for query logic validation
-├── data/
-│   ├── module_map.json      # Module code to name mappings
-│   ├── class_schedule.json  # Structured schedule data
-│   └── *.pdf                # Source documents
-├── chroma_db/           # Vector database (auto-generated)
-└── requirements.txt     # Python dependencies
+user question
+    ↓
+intent detection (what is the user asking?)
+    ↓
+    ├── schedule query → use json data (exact times, rooms)
+    ├── module list → use json data (semester-specific)
+    └── module info → use rag search (detailed descriptions)
+    ↓
+context building
+    ↓
+llm generation (ollama/llama3.2)
+    ↓
+response to user
 ```
 
-## Key Improvements (December 2025)
+### technologies
 
-### 🔧 Enhanced PDF Parsing
-- **Multi-line module names**: Correctly handles names spanning multiple lines (e.g., "Physics: Mechanics, Electricity and\nMagnetism")
-- **Complete professor names**: Properly concatenates split names (e.g., "Prof. Dr. Große-\nKampmann")
-- **State machine parser**: More robust than regex-only approach, handles edge cases
+- **python 3.11** - core language
+- **gradio 6.0** - web interface
+- **langchain** - rag framework
+- **chromadb** - vector database
+- **ollama** - local llm server
+  - llama3.2 (chat model)
+  - all-minilm (embeddings)
+- **pdfplumber** - pdf text extraction
 
-### 🧠 Smarter Query Understanding
-- **Intent classification**: `detect_query_intent()` categorizes queries for appropriate routing
-- **Improved module matching**: Scoring system with exact substring, all-words, and partial matching
-- **Day/semester extraction**: Handles natural language like "today", "3rd semester", "winter"
+### key concepts
 
-### 💬 Better LLM Prompting
-- **Structured data emphasis**: Clear visual separation and mandatory instructions
-- **No hallucinations**: Explicit instructions to use provided data, not generic advice
-- **Context-aware prompts**: Different system prompts for schedule vs. general queries
+**rag (retrieval augmented generation)**
+combines document search with llm generation to provide accurate, source-grounded answers
 
-## Development Notes
+**intent detection**
+determines what the user is asking for and routes to the appropriate data source
 
-### Adding New Features
-- **New query types**: Add to `detect_query_intent()` in `logic_engine.py`
-- **Additional data sources**: Add parsing logic in `ingest.py`
-- **Custom prompts**: Modify `generate_chat_response()` in `chat.py`
+**hybrid search**
+uses both keyword matching (bm25) and semantic search (vectors) for better retrieval
 
-### Configuration
-All configurable values are in `config.py`:
-- Ollama models and URL
-- File paths and directory structure
-- Semester/season mappings
-- Class type definitions
+---
 
-### Testing
-Run `test_queries.py` to validate query understanding without launching the full chatbot:
+## advanced
+
+### regenerate data
 ```bash
-python test_queries.py
+python run.py --force
 ```
+
+### ingest only (no app launch)
+```bash
+python run.py --ingest
+```
+
+### check logs
+```bash
+# logs are in logs/ directory
+logs/zero_chat.log     # conversation history
+logs/zero_debug.log    # errors and warnings
+logs/zero_prompts.log  # llm prompts for tuning
+```
+
+---
+
+## troubleshooting
+
+**"no module named 'pdfplumber'"**
+```bash
+pip install -r requirements.txt
+```
+
+**"ollama connection error"**
+```bash
+ollama serve
+ollama list  # verify models installed
+```
+
+**"empty schedule returned"**
+```bash
+python run.py --force  # re-ingest data
+```
+
+---
+
+## documentation
+
+- **GUIDE.md** - comprehensive technical guide and interview preparation
+- **requirements.txt** - python dependencies
+
+---
+
+## license
+
+mit license - see license file
+
+---
+
+**built for rhine-waal university students**

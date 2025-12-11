@@ -19,7 +19,7 @@ Example Flow:
 """
 
 import re
-from config import WINTER_SEMS, SUMMER_SEMS, ELECTIVE_SEMS
+from config import WINTER_SEMS, SUMMER_SEMS, ELECTIVE_SEMS, is_semester_active, WINTER_SEMESTERS, SUMMER_SEMESTERS
 from typing import Dict, Any, Optional
 
 def extract_semester_criteria(query: str) -> Dict[str, Optional[Any]]:
@@ -242,15 +242,27 @@ def get_schedule_for_day(semester, day, schedule_data):
     """
     Retrieves the schedule for a given semester and day.
     
+    Also checks if the semester is active in the current season.
+    
     Args:
         semester: The semester number (1-7)
         day: The day of the week (e.g., 'Monday', 'Tuesday', etc.)
         schedule_data: The list of all schedule entries
     
     Returns:
-        List of schedule entries for that semester and day, sorted by start time
+        tuple: (results, is_active, current_season)
+            - results: List of schedule entries for that semester and day, sorted by start time
+            - is_active: Boolean indicating if semester has classes in current season
+            - current_season: String ('Winter' or 'Summer')
     """
     results = []
+    
+    # check if semester is active in current season
+    is_active, current_season = is_semester_active(semester)
+    
+    # if semester is not active, return empty results with the metadata
+    if not is_active:
+        return [], is_active, current_season
     
     # Normalize day name (handle case variations)
     day_normalized = day.strip().capitalize()
@@ -262,7 +274,7 @@ def get_schedule_for_day(semester, day, schedule_data):
     # Sort by start time for better readability
     results.sort(key=lambda x: x["start_time"])
     
-    return results
+    return results, is_active, current_season
 
 
 def get_all_schedule_for_semester(semester, schedule_data):
